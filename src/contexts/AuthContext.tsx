@@ -9,7 +9,6 @@ import {
   useLogin,
   useLogout,
   getStoredUser,
-  getStoredToken,
   isAuthenticated,
 } from "../hooks/useAuth";
 import type { UserLoginPayload } from "../Api";

@@ -9,9 +9,7 @@ import {
   Avatar,
 } from "@mui/material";
 import { Notifications } from "@mui/icons-material";
-import { userService } from "../services/userService";
 import { swaggerService } from "../services/swaggerService";
-import type { DashboardStats } from "../hooks/useDashboard";
 
 // Import the new separated components
 import DashboardSidebar, { drawerWidth } from "./DashboardSidebar";

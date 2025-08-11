@@ -88,7 +88,6 @@ export const useLogout = () => {
 
 // Helper functions
 export const getStoredUser = async (): Promise<AdminProfile | undefined> => {
-  const token = localStorage.getItem("authToken");
   const user = await AuthService.getApiAuthAdminProfile();
   return user ? user.admin : undefined;
 };

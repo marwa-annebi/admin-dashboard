@@ -21,8 +21,18 @@ import {
   TextField,
   CircularProgress,
   TablePagination,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import { Add, Edit, Delete, School } from "@mui/icons-material";
+import { AdminLessonManagementService } from "../Api/services/AdminLessonManagementService";
+import { createLesson } from "../services/lessonService";
+import { AdminDomainManagementService } from "../Api/services/AdminDomainManagementService";
+import { LanguageService } from "../Api/services/LanguageService";
+import type { Domain } from "../Api/models/Domain";
+import type { Language } from "../Api/models/Language";
 // Custom interface for lesson management since LessonContent doesn't match our needs
 interface Lesson {
   _id: string;
@@ -38,19 +48,36 @@ const LessonsManagement: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [domainsLoading, setDomainsLoading] = useState(false);
+  const [languages, setLanguages] = useState<Language[]>([]);
+  const [languagesLoading, setLanguagesLoading] = useState(false);
 
   // Pagination states
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
 
   const [formData, setFormData] = useState({
-    title: "",
-    content: "",
-    domainId: "",
+    difficulty: "easy",
+    contents: [
+      {
+        languageId: "",
+        domainId: "",
+        title: "",
+        content: "",
+      },
+    ] as Array<{
+      languageId: string;
+      domainId: string;
+      title: string;
+      content: string;
+    }>,
   });
 
   useEffect(() => {
     loadLessons();
+    loadDomains();
+    loadLanguages();
   }, []);
 
   // Effect for pagination changes
@@ -69,9 +96,18 @@ const LessonsManagement: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      // Note: LessonService doesn't have a get all lessons method
-      // This would need to be implemented in the API
-      setError("Lessons API endpoints not yet implemented. Showing demo data.");
+      const response = await AdminLessonManagementService.getApiLessonAdmin({
+        page: 1,
+        limit: 1000,
+      });
+      const apiLessons = response.data || [];
+      const mapped = apiLessons.map((l: any) => ({
+        _id: l._id || "",
+        title: l.title || "",
+        content: l.description || "",
+        domainId: (l.domain && (l.domain._id || l.domain.id)) || "",
+      }));
+      setAllLessons(mapped);
     } catch (err) {
       console.error("Failed to load lessons:", err);
       setError("Failed to load lessons. Please check API connection.");
@@ -80,7 +116,31 @@ const LessonsManagement: React.FC = () => {
     }
   };
 
-  const handlePageChange = (event: unknown, newPage: number) => {
+  const loadDomains = async () => {
+    setDomainsLoading(true);
+    try {
+      const { data } = await AdminDomainManagementService.getApiDomainesAll({});
+      setDomains(data || []);
+    } catch (err) {
+      console.error("Failed to load domains:", err);
+    } finally {
+      setDomainsLoading(false);
+    }
+  };
+
+  const loadLanguages = async () => {
+    setLanguagesLoading(true);
+    try {
+      const langs = await LanguageService.getApiLanguages();
+      setLanguages(langs || []);
+    } catch (err) {
+      console.error("Failed to load languages:", err);
+    } finally {
+      setLanguagesLoading(false);
+    }
+  };
+
+  const handlePageChange = (_event: unknown, newPage: number) => {
     setPage(newPage);
   };
 
@@ -94,13 +154,31 @@ const LessonsManagement: React.FC = () => {
     if (lesson) {
       setEditingLesson(lesson);
       setFormData({
-        title: lesson.title || "",
-        content: lesson.content || "",
-        domainId: lesson.domainId || "",
+        difficulty: "easy",
+        contents: [
+          {
+            languageId:
+              ((domains.find((d) => d._id === lesson.domainId) as any)?.language
+                ?._id as string) || "",
+            domainId: lesson.domainId || "",
+            title: lesson.title || "",
+            content: lesson.content || "",
+          },
+        ],
       });
     } else {
       setEditingLesson(null);
-      setFormData({ title: "", content: "", domainId: "" });
+      setFormData({
+        difficulty: "easy",
+        contents: [
+          {
+            languageId: "",
+            domainId: "",
+            title: "",
+            content: "",
+          },
+        ],
+      });
     }
     setOpenDialog(true);
   };
@@ -108,31 +186,63 @@ const LessonsManagement: React.FC = () => {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setEditingLesson(null);
-    setFormData({ title: "", content: "", domainId: "" });
+    setFormData({
+      difficulty: "easy",
+      contents: [
+        {
+          languageId: "",
+          domainId: "",
+          title: "",
+          content: "",
+        },
+      ],
+    });
   };
 
   const handleSave = async () => {
-    // Note: The current API doesn't support full CRUD operations for lessons
-    setError(
-      "Lesson CRUD operations not yet fully implemented in the API. This is for demonstration purposes."
-    );
-
-    // Simulate the operation for demo purposes
-    if (editingLesson) {
-      // Update existing lesson
-      const updatedLessons = allLessons.map((lesson) =>
-        lesson._id === editingLesson._id ? { ...lesson, ...formData } : lesson
-      );
-      setAllLessons(updatedLessons);
-    } else {
-      // Create new lesson
-      const newLesson: Lesson = {
-        _id: Date.now().toString(),
-        ...formData,
-      };
-      setAllLessons([...allLessons, newLesson]);
+    try {
+      if (editingLesson) {
+        // Update not yet wired to API
+        setError(
+          "Lesson update not yet implemented in the API. This is for demonstration purposes."
+        );
+        const updatedLessons = allLessons.map((lesson) =>
+          lesson._id === editingLesson._id
+            ? {
+                ...lesson,
+                title: formData.contents[0]?.title || lesson.title,
+                content: formData.contents[0]?.content || lesson.content,
+                domainId: formData.contents[0]?.domainId || lesson.domainId,
+              }
+            : lesson
+        );
+        setAllLessons(updatedLessons);
+      } else {
+        const createdLessons: Lesson[] = [];
+        for (const entry of formData.contents) {
+          const created = await createLesson({
+            title: entry.title,
+            description: entry.content,
+            domainId: entry.domainId,
+            difficulty: formData.difficulty as "easy" | "medium" | "hard",
+          });
+          createdLessons.push({
+            _id: created._id || "",
+            title: created.title || "",
+            content: created.description || "",
+            domainId:
+              (created.domain &&
+                (created.domain._id || (created as any).domainId)) ||
+              "",
+          });
+        }
+        setAllLessons([...allLessons, ...createdLessons]);
+      }
+      handleCloseDialog();
+    } catch (err) {
+      console.error("Failed to save lesson:", err);
+      setError("Failed to save lesson. Please try again.");
     }
-    handleCloseDialog();
   };
 
   const handleDelete = async (lessonId: string) => {
@@ -184,8 +294,8 @@ const LessonsManagement: React.FC = () => {
       </Typography>
 
       <Alert severity="info" sx={{ mb: 3 }}>
-        Lesson management requires additional API endpoints to be implemented.
-        Currently showing demo data for UI demonstration.
+        Lessons are loaded from the admin lessons endpoint. Create is enabled;
+        update and delete may require additional API endpoints.
       </Alert>
 
       {error && (
@@ -296,37 +406,154 @@ const LessonsManagement: React.FC = () => {
         </DialogTitle>
         <DialogContent>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+            {formData.contents.map((c, idx) => (
+              <Box
+                key={`content-${idx}`}
+                sx={{
+                  border: "1px solid rgba(0,0,0,0.08)",
+                  borderRadius: 2,
+                  p: 2,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                }}
+              >
+                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                  Language content #{idx + 1}
+                </Typography>
+                <FormControl fullWidth required>
+                  <InputLabel>Language</InputLabel>
+                  <Select
+                    label="Language"
+                    value={c.languageId}
+                    onChange={(e) => {
+                      const value = e.target.value as string;
+                      setFormData((prev) => ({
+                        ...prev,
+                        contents: prev.contents.map((item, i) =>
+                          i === idx
+                            ? { ...item, languageId: value, domainId: "" }
+                            : item
+                        ),
+                      }));
+                    }}
+                    disabled={languagesLoading}
+                  >
+                    {languages.map((lang) => (
+                      <MenuItem key={lang._id} value={lang._id || ""}>
+                        {lang.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl fullWidth required>
+                  <InputLabel>Domain</InputLabel>
+                  <Select
+                    label="Domain"
+                    value={c.domainId}
+                    onChange={(e) => {
+                      const value = e.target.value as string;
+                      setFormData((prev) => ({
+                        ...prev,
+                        contents: prev.contents.map((item, i) =>
+                          i === idx ? { ...item, domainId: value } : item
+                        ),
+                      }));
+                    }}
+                    disabled={domainsLoading || !c.languageId}
+                  >
+                    {domains
+                      .filter(
+                        (d: any) => (d.language?._id || "") === c.languageId
+                      )
+                      .map((domain) => (
+                        <MenuItem key={domain._id} value={domain._id || ""}>
+                          {domain.name}
+                        </MenuItem>
+                      ))}
+                  </Select>
+                </FormControl>
+                <TextField
+                  label="Lesson Title"
+                  value={c.title}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData((prev) => ({
+                      ...prev,
+                      contents: prev.contents.map((item, i) =>
+                        i === idx ? { ...item, title: value } : item
+                      ),
+                    }));
+                  }}
+                  fullWidth
+                  required
+                />
+                <TextField
+                  label="Content"
+                  value={c.content}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData((prev) => ({
+                      ...prev,
+                      contents: prev.contents.map((item, i) =>
+                        i === idx ? { ...item, content: value } : item
+                      ),
+                    }));
+                  }}
+                  fullWidth
+                  required
+                  multiline
+                  rows={4}
+                  placeholder="Enter the lesson content, instructions, or description"
+                />
+                {formData.contents.length > 1 && (
+                  <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                    <Button
+                      color="error"
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          contents: prev.contents.filter((_, i) => i !== idx),
+                        }));
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+            ))}
+            <Box>
+              <Button
+                variant="outlined"
+                onClick={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    contents: [
+                      ...prev.contents,
+                      { languageId: "", domainId: "", title: "", content: "" },
+                    ],
+                  }))
+                }
+              >
+                Add another language content
+              </Button>
+            </Box>
             <TextField
-              label="Lesson Title"
-              value={formData.title}
+              label="Difficulty"
+              value={formData.difficulty}
               onChange={(e) =>
-                setFormData({ ...formData, title: e.target.value })
+                setFormData({ ...formData, difficulty: e.target.value })
               }
               fullWidth
               required
-            />
-            <TextField
-              label="Content"
-              value={formData.content}
-              onChange={(e) =>
-                setFormData({ ...formData, content: e.target.value })
-              }
-              fullWidth
-              required
-              multiline
-              rows={6}
-              placeholder="Enter the lesson content, instructions, or description"
-            />
-            <TextField
-              label="Domain ID"
-              value={formData.domainId}
-              onChange={(e) =>
-                setFormData({ ...formData, domainId: e.target.value })
-              }
-              fullWidth
-              required
-              placeholder="Enter the domain ID this lesson belongs to"
-            />
+              select
+              SelectProps={{ native: true }}
+            >
+              <option value="easy">easy</option>
+              <option value="medium">medium</option>
+              <option value="hard">hard</option>
+            </TextField>
           </Box>
         </DialogContent>
         <DialogActions>
@@ -335,7 +562,15 @@ const LessonsManagement: React.FC = () => {
             onClick={handleSave}
             variant="contained"
             disabled={
-              !formData.title || !formData.content || !formData.domainId
+              !formData.difficulty ||
+              formData.contents.length === 0 ||
+              formData.contents.some(
+                (c) =>
+                  !c.languageId ||
+                  !c.domainId ||
+                  !c.title.trim() ||
+                  !c.content.trim()
+              )
             }
           >
             {editingLesson ? "Update" : "Create"}

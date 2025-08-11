@@ -35,7 +35,7 @@ import {
   Category,
   CloudUpload,
   Search,
-  FilterList,
+  
   Clear,
 } from "@mui/icons-material";
 import type { Domain } from "../Api/models/Domain";
@@ -155,7 +155,7 @@ const DomainsManagement: React.FC = () => {
     }
   }, [searchTerm, selectedLanguageFilter, debouncedLoadDomains]);
 
-  const handlePageChange = (event: unknown, newPage: number) => {
+  const handlePageChange = (_event: unknown, newPage: number) => {
     setPage(newPage);
   };
 
@@ -296,7 +296,7 @@ const DomainsManagement: React.FC = () => {
 
         console.log("Creating domain with data:", createFormData);
 
-        const newDomain = await AdminDomainManagementService.postApiDomaines({
+        await AdminDomainManagementService.postApiDomaines({
           formData: createFormData,
         });
 

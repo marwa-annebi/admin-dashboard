@@ -20,16 +20,23 @@ import {
   DialogActions,
   TextField,
   CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Chip,
 } from "@mui/material";
-import { Add, Edit, Delete, Spellcheck } from "@mui/icons-material";
-
-interface Word {
-  _id?: string;
-  word?: string;
-  translation?: string;
-  pronunciation?: string;
-  lessonId?: string;
-}
+import {
+  Add,
+  Edit,
+  Delete,
+  Spellcheck,
+  CloudUpload,
+} from "@mui/icons-material";
+import { AdminWordManagementService } from "../Api/services/AdminWordManagementService";
+import { AdminLessonManagementService } from "../Api/services/AdminLessonManagementService";
+import type { Word } from "../Api/models/Word";
+import type { Lesson } from "../Api/models/Lesson";
 
 const WordsManagement: React.FC = () => {
   const [words, setWords] = useState<Word[]>([]);
@@ -37,14 +44,17 @@ const WordsManagement: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingWord, setEditingWord] = useState<Word | null>(null);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    word: "",
-    translation: "",
-    pronunciation: "",
     lessonId: "",
+    word: "",
+    sentence: "",
+    images: [] as File[],
   });
 
   useEffect(() => {
+    loadLessons();
     loadWords();
   }, []);
 
@@ -52,39 +62,11 @@ const WordsManagement: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      // Note: Words API endpoints not yet implemented
-      setError("Words API endpoints not yet implemented. Showing demo data.");
-      // Fallback demo data
-      setWords([
-        {
-          _id: "1",
-          word: "Dog",
-          translation: "Perro",
-          pronunciation: "/dɔːg/",
-          lessonId: "1",
-        },
-        {
-          _id: "2",
-          word: "Cat",
-          translation: "Gato",
-          pronunciation: "/kæt/",
-          lessonId: "1",
-        },
-        {
-          _id: "3",
-          word: "Red",
-          translation: "Rojo",
-          pronunciation: "/red/",
-          lessonId: "2",
-        },
-        {
-          _id: "4",
-          word: "Blue",
-          translation: "Azul",
-          pronunciation: "/bluː/",
-          lessonId: "2",
-        },
-      ]);
+      const response = await AdminWordManagementService.getApiWordsAdmin({
+        page: 1,
+        limit: 1000,
+      });
+      setWords(response.data || []);
     } catch (err) {
       console.error("Failed to load words:", err);
       setError("Failed to load words. Please check API connection.");
@@ -93,23 +75,31 @@ const WordsManagement: React.FC = () => {
     }
   };
 
-  const handleOpenDialog = (word?: Word) => {
-    if (word) {
-      setEditingWord(word);
+  const loadLessons = async () => {
+    try {
+      const response = await AdminLessonManagementService.getApiLessonAdmin({
+        page: 1,
+        limit: 1000,
+      });
+      setLessons(response.data || []);
+    } catch (err) {
+      console.error("Failed to load lessons for selection:", err);
+      // Don't block word list on lessons failure
+    }
+  };
+
+  const handleOpenDialog = (wordItem?: Word) => {
+    if (wordItem) {
+      setEditingWord(wordItem);
       setFormData({
-        word: word.word || "",
-        translation: word.translation || "",
-        pronunciation: word.pronunciation || "",
-        lessonId: word.lessonId || "",
+        lessonId: wordItem.lesson?._id || "",
+        word: wordItem.word || "",
+        sentence: wordItem.sentence || "",
+        images: [],
       });
     } else {
       setEditingWord(null);
-      setFormData({
-        word: "",
-        translation: "",
-        pronunciation: "",
-        lessonId: "",
-      });
+      setFormData({ lessonId: "", word: "", sentence: "", images: [] });
     }
     setOpenDialog(true);
   };
@@ -117,43 +107,46 @@ const WordsManagement: React.FC = () => {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setEditingWord(null);
-    setFormData({ word: "", translation: "", pronunciation: "", lessonId: "" });
+    setFormData({ lessonId: "", word: "", sentence: "", images: [] });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    setFormData((prev) => ({ ...prev, images: files as File[] }));
   };
 
   const handleSave = async () => {
-    // Note: The current API doesn't support CRUD operations for words
-    setError(
-      "Word CRUD operations not yet implemented in the API. This is for demonstration purposes."
-    );
-
-    // Simulate the operation for demo purposes
-    if (editingWord) {
-      // Update existing word
-      setWords(
-        words.map((word) =>
-          word._id === editingWord._id ? { ...word, ...formData } : word
-        )
-      );
-    } else {
-      // Create new word
-      const newWord: Word = {
-        _id: Date.now().toString(),
-        ...formData,
-      };
-      setWords([...words, newWord]);
+    try {
+      setSubmitting(true);
+      setError(null);
+      if (editingWord) {
+        // Update not implemented yet
+        setError("Word update not yet implemented in the API.");
+      } else {
+        await AdminWordManagementService.postApiWordsAdmin({
+          formData: {
+            lessonId: formData.lessonId,
+            word: formData.word,
+            sentence: formData.sentence || undefined,
+            images: formData.images.length
+              ? (formData.images as Blob[])
+              : undefined,
+          },
+        });
+        await loadWords();
+      }
+      handleCloseDialog();
+    } catch (err) {
+      console.error("Failed to save word:", err);
+      setError("Failed to save word. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-    handleCloseDialog();
   };
 
-  const handleDelete = async (wordId: string) => {
+  const handleDelete = async (_wordId: string) => {
     if (window.confirm("Are you sure you want to delete this word?")) {
-      // Note: The current API doesn't support delete operations for words
-      setError(
-        "Word deletion not yet implemented in the API. This is for demonstration purposes."
-      );
-
-      // Simulate the operation for demo purposes
-      setWords(words.filter((word) => word._id !== wordId));
+      setError("Word deletion not yet implemented in the API.");
     }
   };
 
@@ -180,14 +173,9 @@ const WordsManagement: React.FC = () => {
       </Box>
 
       <Typography variant="body1" paragraph color="text.secondary">
-        Manage vocabulary words within lessons. Words are the fundamental
-        building blocks of language learning.
+        Manage vocabulary words within lessons. Words include optional images
+        and a sentence.
       </Typography>
-
-      <Alert severity="info" sx={{ mb: 3 }}>
-        Words management requires additional API endpoints to be implemented.
-        Currently showing demo data for UI demonstration.
-      </Alert>
 
       {error && (
         <Alert severity="warning" sx={{ mb: 3 }}>
@@ -207,40 +195,72 @@ const WordsManagement: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>Word</TableCell>
-                    <TableCell>Translation</TableCell>
-                    <TableCell>Pronunciation</TableCell>
-                    <TableCell>Lesson ID</TableCell>
+                    <TableCell>Sentence</TableCell>
+                    <TableCell>Images</TableCell>
+                    <TableCell>Lesson</TableCell>
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {words.map((word) => (
-                    <TableRow key={word._id}>
+                  {words.map((wordItem) => (
+                    <TableRow key={wordItem._id}>
                       <TableCell>
                         <Box
                           sx={{ display: "flex", alignItems: "center", gap: 1 }}
                         >
                           <Spellcheck color="primary" />
-                          <strong>{word.word}</strong>
+                          <strong>{wordItem.word}</strong>
                         </Box>
                       </TableCell>
-                      <TableCell>{word.translation}</TableCell>
+                      <TableCell>{wordItem.sentence || "—"}</TableCell>
                       <TableCell>
-                        <code style={{ fontSize: "0.9em", color: "#666" }}>
-                          {word.pronunciation}
-                        </code>
+                        {wordItem.images && wordItem.images.length > 0 ? (
+                          <Box
+                            sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}
+                          >
+                            {wordItem.images.slice(0, 3).map((img, idx) => (
+                              <img
+                                key={`${wordItem._id}-img-${idx}`}
+                                src={`http://localhost:5000/${img}`}
+                                alt={`word-img-${idx}`}
+                                style={{
+                                  width: 36,
+                                  height: 36,
+                                  objectFit: "cover",
+                                  borderRadius: 4,
+                                  border: "1px solid #eee",
+                                }}
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
+                                }}
+                              />
+                            ))}
+                            {wordItem.images.length > 3 && (
+                              <Chip
+                                label={`+${wordItem.images.length - 3}`}
+                                size="small"
+                              />
+                            )}
+                          </Box>
+                        ) : (
+                          "No images"
+                        )}
                       </TableCell>
-                      <TableCell>{word.lessonId}</TableCell>
+                      <TableCell>
+                        {wordItem.lesson?.title || wordItem.lesson?._id || "—"}
+                      </TableCell>
                       <TableCell align="right">
                         <IconButton
                           color="primary"
-                          onClick={() => handleOpenDialog(word)}
+                          onClick={() => handleOpenDialog(wordItem)}
                         >
                           <Edit />
                         </IconButton>
                         <IconButton
                           color="error"
-                          onClick={() => word._id && handleDelete(word._id)}
+                          onClick={() =>
+                            wordItem._id && handleDelete(wordItem._id)
+                          }
                         >
                           <Delete />
                         </IconButton>
@@ -263,6 +283,25 @@ const WordsManagement: React.FC = () => {
         <DialogTitle>{editingWord ? "Edit Word" : "Add New Word"}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+            <FormControl fullWidth required>
+              <InputLabel>Lesson</InputLabel>
+              <Select
+                label="Lesson"
+                value={formData.lessonId}
+                onChange={(e) =>
+                  setFormData({ ...formData, lessonId: e.target.value })
+                }
+                MenuProps={{ PaperProps: { style: { maxHeight: 300 } } }}
+              >
+                {lessons.map((lesson) => (
+                  <MenuItem key={lesson._id} value={lesson._id || ""}>
+                    {lesson.title}{" "}
+                    {lesson.difficulty ? `(${lesson.difficulty})` : ""}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
             <TextField
               label="Word"
               value={formData.word}
@@ -273,36 +312,45 @@ const WordsManagement: React.FC = () => {
               required
               placeholder="Enter the word"
             />
+
             <TextField
-              label="Translation"
-              value={formData.translation}
+              label="Sentence"
+              value={formData.sentence}
               onChange={(e) =>
-                setFormData({ ...formData, translation: e.target.value })
+                setFormData({ ...formData, sentence: e.target.value })
               }
               fullWidth
-              required
-              placeholder="Enter the translation"
+              placeholder="Enter a sentence using the word (optional)"
+              multiline
+              rows={3}
             />
-            <TextField
-              label="Pronunciation"
-              value={formData.pronunciation}
-              onChange={(e) =>
-                setFormData({ ...formData, pronunciation: e.target.value })
-              }
-              fullWidth
-              placeholder="Enter IPA pronunciation (optional)"
-              helperText="Use IPA notation, e.g., /həˈloʊ/"
-            />
-            <TextField
-              label="Lesson ID"
-              value={formData.lessonId}
-              onChange={(e) =>
-                setFormData({ ...formData, lessonId: e.target.value })
-              }
-              fullWidth
-              required
-              placeholder="Enter the lesson ID this word belongs to"
-            />
+
+            <Box>
+              <Button
+                component="label"
+                variant="outlined"
+                startIcon={<CloudUpload />}
+                fullWidth
+              >
+                Upload Images
+                <input
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/gif"
+                  onChange={handleFileChange}
+                  hidden
+                  multiple
+                />
+              </Button>
+              {formData.images.length > 0 && (
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 1 }}
+                >
+                  Selected: {formData.images.map((f) => f.name).join(", ")}
+                </Typography>
+              )}
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>
@@ -310,11 +358,9 @@ const WordsManagement: React.FC = () => {
           <Button
             onClick={handleSave}
             variant="contained"
-            disabled={
-              !formData.word || !formData.translation || !formData.lessonId
-            }
+            disabled={!formData.word || !formData.lessonId || submitting}
           >
-            {editingWord ? "Update" : "Create"}
+            {submitting ? "Saving..." : editingWord ? "Update" : "Create"}
           </Button>
         </DialogActions>
       </Dialog>

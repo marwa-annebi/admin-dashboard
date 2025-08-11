@@ -16,18 +16,9 @@ import {
 import {
   Dashboard,
   People,
-  School,
-  Language,
   Settings,
   Logout,
-  Person,
-  ChildCare,
-  Analytics,
   MenuBook,
-  Public,
-  Category,
-  Spellcheck,
-  Api,
 } from "@mui/icons-material";
 
 const drawerWidth = 280;

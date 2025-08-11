@@ -1,8 +1,6 @@
 import React, { useState } from "react";
 import {
   Box,
-  Card,
-  CardContent,
   TextField,
   Button,
   Typography,
@@ -19,8 +17,6 @@ import {
   Email,
   Lock,
 } from "@mui/icons-material";
-import { useLogin } from "../hooks/useAuth";
-import { AuthService } from "../Api";
 import { useAuth } from "../contexts/AuthContext";
 
 interface SignInProps {

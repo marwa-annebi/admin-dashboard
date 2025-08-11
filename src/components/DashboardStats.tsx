@@ -9,7 +9,6 @@ import {
   School,
   Spellcheck,
 } from "@mui/icons-material";
-import type { DashboardStats as DashboardStatsType } from "../hooks/useDashboard";
 import type { DashboardStatistics } from "../Api";
 
 interface DashboardStatsProps {

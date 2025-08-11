@@ -2,6 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { Lesson } from '../models/Lesson';
 import type { LessonContent } from '../models/LessonContent';
 import type { LessonFinish } from '../models/LessonFinish';
 import type { LessonReview } from '../models/LessonReview';
@@ -79,6 +80,43 @@ export class LessonService {
             url: '/api/lesson/finish-sentence',
             body: requestBody,
             mediaType: 'application/json',
+        });
+    }
+    /**
+     * Get active lessons
+     * List active lessons with optional filters and pagination.
+     * @returns any Lessons retrieved
+     * @throws ApiError
+     */
+    public static getApiLesson1({
+        domainId,
+        difficulty,
+        search,
+        page = 1,
+        limit = 20,
+    }: {
+        domainId?: string,
+        difficulty?: 'easy' | 'medium' | 'hard',
+        search?: string,
+        page?: number,
+        limit?: number,
+    }): CancelablePromise<{
+        message?: string;
+        data?: Array<Lesson>;
+        totalCount?: number;
+        page?: number;
+        limit?: number;
+    }> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/lesson',
+            query: {
+                'domainId': domainId,
+                'difficulty': difficulty,
+                'search': search,
+                'page': page,
+                'limit': limit,
+            },
         });
     }
     /**

@@ -21,6 +21,7 @@ import {
   TextField,
   CircularProgress,
   TablePagination,
+  Snackbar,
 } from "@mui/material";
 import {
   Add,
@@ -30,6 +31,8 @@ import {
 } from "@mui/icons-material";
 import { LanguageService } from "../Api/services/LanguageService";
 import type { Language } from "../Api/models/Language";
+import type { AlertColor } from "@mui/material/Alert";
+import { createLanguage } from "../services/languageService";
 
 const LanguagesManagement: React.FC = () => {
   const [allLanguages, setAllLanguages] = useState<Language[]>([]);
@@ -47,6 +50,21 @@ const LanguagesManagement: React.FC = () => {
     name: "",
     code: "",
   });
+
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: AlertColor;
+  }>({ open: false, message: "", severity: "success" });
+
+  const showSnackbar = (message: string, severity: AlertColor) => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const handleSnackbarClose = (_event?: unknown, reason?: string) => {
+    if (reason === "clickaway") return;
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  };
 
   useEffect(() => {
     loadLanguages();
@@ -73,6 +91,7 @@ const LanguagesManagement: React.FC = () => {
     } catch (err) {
       console.error("Failed to load languages:", err);
       setError("Failed to load languages. Please check API connection.");
+      showSnackbar("Failed to load languages. Showing demo data.", "error");
       // Fallback demo data
       const demoData = [
         { _id: "1", name: "English", code: "en" },
@@ -94,7 +113,7 @@ const LanguagesManagement: React.FC = () => {
     }
   };
 
-  const handlePageChange = (event: unknown, newPage: number) => {
+  const handlePageChange = (_event: unknown, newPage: number) => {
     setPage(newPage);
   };
 
@@ -125,28 +144,31 @@ const LanguagesManagement: React.FC = () => {
   };
 
   const handleSave = async () => {
-    // Note: The current API doesn't support CRUD operations for languages
-    // This is a placeholder for future API implementation
-    setError(
-      "Language CRUD operations not yet implemented in the API. This is for demonstration purposes."
-    );
-
-    // Simulate the operation for demo purposes
-    if (editingLanguage) {
-      // Update existing language
-      const updatedLanguages = allLanguages.map((lang) =>
-        lang._id === editingLanguage._id ? { ...lang, ...formData } : lang
-      );
-      setAllLanguages(updatedLanguages);
-    } else {
-      // Create new language
-      const newLanguage: Language = {
-        _id: Date.now().toString(),
-        ...formData,
-      };
-      setAllLanguages([...allLanguages, newLanguage]);
+    try {
+      if (editingLanguage) {
+        // Update not yet wired to API
+        setError(
+          "Language update not yet implemented in the API. This is for demonstration purposes."
+        );
+        const updatedLanguages = allLanguages.map((lang) =>
+          lang._id === editingLanguage._id ? { ...lang, ...formData } : lang
+        );
+        setAllLanguages(updatedLanguages);
+      } else {
+        // Create via API
+        const created = await createLanguage({
+          name: formData.name,
+          code: formData.code,
+        });
+        setAllLanguages([...allLanguages, created as Language]);
+        showSnackbar("Language created successfully", "success");
+      }
+      handleCloseDialog();
+    } catch (err) {
+      console.error("Failed to save language:", err);
+      setError("Failed to save language. Please try again.");
+      showSnackbar("Failed to save language. Please try again.", "error");
     }
-    handleCloseDialog();
   };
 
   const handleDelete = async (languageId: string) => {
@@ -198,8 +220,9 @@ const LanguagesManagement: React.FC = () => {
       </Typography>
 
       <Alert severity="info" sx={{ mb: 3 }}>
-        Currently showing read-only language data from GET /api/languages. CRUD
-        operations require additional API endpoints to be implemented.
+        Languages are loaded from GET /api/languages. Create is enabled; update
+        and delete operations require additional API endpoints to be
+        implemented.
       </Alert>
 
       {error && (
@@ -336,6 +359,21 @@ const LanguagesManagement: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={handleSnackbarClose}
+          severity={snackbar.severity}
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

@@ -174,7 +174,7 @@ const ParentsManagement: React.FC = () => {
     }
   };
 
-  const handlePageChange = (event: unknown, newPage: number) => {
+  const handlePageChange = (_event: unknown, newPage: number) => {
     setPage(newPage);
   };
 
@@ -210,7 +210,7 @@ const ParentsManagement: React.FC = () => {
     try {
       if (editingParent) {
         // Update existing parent
-        const updated = await AdminParentManagementService.putApiUserParents({
+        await AdminParentManagementService.putApiUserParents({
           id: editingParent._id!,
           requestBody: {
             name: formData.username,
@@ -233,7 +233,7 @@ const ParentsManagement: React.FC = () => {
         setAllParents(updatedParents);
       } else {
         // Create new parent
-        const newParent = await AdminParentManagementService.postApiUserParents(
+        await AdminParentManagementService.postApiUserParents(
           {
             requestBody: {
               name: formData.username,

@@ -12,7 +12,7 @@ export const setupAPI = () => {
   OpenAPI.CREDENTIALS = "include";
 
   // Set up token resolver
-  OpenAPI.TOKEN = async (options: ApiRequestOptions): Promise<string> => {
+  OpenAPI.TOKEN = async (_options: ApiRequestOptions): Promise<string> => {
     const token =
       localStorage.getItem("authToken") ||
       localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
