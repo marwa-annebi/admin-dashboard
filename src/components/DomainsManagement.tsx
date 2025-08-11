@@ -35,12 +35,11 @@ import {
   Category,
   CloudUpload,
   Search,
-  
   Clear,
 } from "@mui/icons-material";
 import type { Domain } from "../Api/models/Domain";
 import type { Language } from "../Api/models/Language";
-import { AdminDomainManagementService, LanguageService } from "../Api";
+import { AdminDomainManagementService, LanguageService, OpenAPI } from "../Api";
 
 const DomainsManagement: React.FC = () => {
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -330,6 +329,21 @@ const DomainsManagement: React.FC = () => {
     }
   };
 
+  const buildImageUrl = (rawPath?: string) => {
+    if (!rawPath) return "";
+    const trimmed = String(rawPath).trim();
+    // Normalize any backslashes first (even when absolute)
+    const normalized = trimmed.replace(/\\/g, "/");
+    // If already absolute URL, return as-is (after normalization)
+    if (/^https?:\/\//i.test(normalized)) return normalized;
+    // Ensure leading slash and prepend API base
+    const pathWithLeadingSlash = normalized.startsWith("/")
+      ? normalized
+      : `/${normalized}`;
+    const base = (OpenAPI.BASE || "").replace(/\/$/, "");
+    return `${base}${pathWithLeadingSlash}`;
+  };
+
   return (
     <Box>
       <Box
@@ -555,8 +569,9 @@ const DomainsManagement: React.FC = () => {
                         <TableCell>
                           {domain.image ? (
                             <img
-                              src={`http://localhost:5000/${domain.image}`}
+                              src={buildImageUrl(domain.image)}
                               alt={domain.name}
+                              crossOrigin="anonymous"
                               style={{
                                 width: 40,
                                 height: 40,

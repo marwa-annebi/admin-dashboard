@@ -341,7 +341,7 @@ const LessonsManagement: React.FC = () => {
                   <TableRow>
                     <TableCell>Title</TableCell>
                     <TableCell>Content</TableCell>
-                    <TableCell>Domain ID</TableCell>
+                    <TableCell>Domain Name</TableCell>
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
                 </TableHead>
@@ -383,7 +383,9 @@ const LessonsManagement: React.FC = () => {
                             ? `${lesson.content.substring(0, 50)}...`
                             : lesson.content}
                         </TableCell>
-                        <TableCell>{lesson.domainId}</TableCell>
+                        <TableCell>
+                          {domains.find((d) => d._id === lesson.domainId)?.name}
+                        </TableCell>
                         <TableCell align="right">
                           <IconButton
                             color="primary"

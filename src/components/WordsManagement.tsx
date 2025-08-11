@@ -34,6 +34,7 @@ import {
   CloudUpload,
 } from "@mui/icons-material";
 import { AdminWordManagementService } from "../Api/services/AdminWordManagementService";
+import { OpenAPI } from "../Api/core/OpenAPI";
 import { AdminLessonManagementService } from "../Api/services/AdminLessonManagementService";
 import type { Word } from "../Api/models/Word";
 import type { Lesson } from "../Api/models/Lesson";
@@ -52,6 +53,21 @@ const WordsManagement: React.FC = () => {
     sentence: "",
     images: [] as File[],
   });
+
+  const buildImageUrl = (rawPath?: string) => {
+    if (!rawPath) return "";
+    const trimmed = String(rawPath).trim();
+    // Normalize any backslashes first (even when absolute)
+    const normalized = trimmed.replace(/\\/g, "/");
+    // If already absolute URL, return as-is (after normalization)
+    if (/^https?:\/\//i.test(normalized)) return normalized;
+    // Ensure leading slash and prepend API base
+    const pathWithLeadingSlash = normalized.startsWith("/")
+      ? normalized
+      : `/${normalized}`;
+    const base = (OpenAPI.BASE || "").replace(/\/$/, "");
+    return `${base}${pathWithLeadingSlash}`;
+  };
 
   useEffect(() => {
     loadLessons();
@@ -221,7 +237,7 @@ const WordsManagement: React.FC = () => {
                             {wordItem.images.slice(0, 3).map((img, idx) => (
                               <img
                                 key={`${wordItem._id}-img-${idx}`}
-                                src={`http://localhost:5000/${img}`}
+                                src={buildImageUrl(img)}
                                 alt={`word-img-${idx}`}
                                 style={{
                                   width: 36,
@@ -230,8 +246,10 @@ const WordsManagement: React.FC = () => {
                                   borderRadius: 4,
                                   border: "1px solid #eee",
                                 }}
+                                crossOrigin="anonymous"
                                 onError={(e) => {
                                   e.currentTarget.style.display = "none";
+                                  // Optionally keep a minimal placeholder box next to others
                                 }}
                               />
                             ))}
