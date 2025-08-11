@@ -25,8 +25,9 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  InputAdornment,
 } from "@mui/material";
-import { Add, Edit, Delete, School } from "@mui/icons-material";
+import { Add, Edit, Delete, School, Search } from "@mui/icons-material";
 import { AdminLessonManagementService } from "../Api/services/AdminLessonManagementService";
 import { createLesson } from "../services/lessonService";
 import { AdminDomainManagementService } from "../Api/services/AdminDomainManagementService";
@@ -57,6 +58,9 @@ const LessonsManagement: React.FC = () => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
 
+  // Search state
+  const [searchTerm, setSearchTerm] = useState("");
+
   const [formData, setFormData] = useState({
     difficulty: "easy",
     contents: [
@@ -80,6 +84,15 @@ const LessonsManagement: React.FC = () => {
     loadLanguages();
   }, []);
 
+  // Debounce search and reload lessons from backend
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setPage(0);
+      loadLessons(searchTerm.trim() || undefined);
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [searchTerm]);
+
   // Effect for pagination changes
   useEffect(() => {
     updatePaginatedLessons();
@@ -92,13 +105,14 @@ const LessonsManagement: React.FC = () => {
     setLessons(paginatedLessons);
   };
 
-  const loadLessons = async () => {
+  const loadLessons = async (search?: string) => {
     setLoading(true);
     setError(null);
     try {
       const response = await AdminLessonManagementService.getApiLessonAdmin({
         page: 1,
         limit: 1000,
+        search,
       });
       const apiLessons = response.data || [];
       const mapped = apiLessons.map((l: any) => ({
@@ -279,24 +293,34 @@ const LessonsManagement: React.FC = () => {
         <Typography variant="h5" sx={{ fontWeight: 600 }}>
           Lessons Management
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => handleOpenDialog()}
-        >
-          Add Lesson
-        </Button>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <TextField
+            size="small"
+            placeholder="Search lessons..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => handleOpenDialog()}
+          >
+            Add Lesson
+          </Button>
+        </Box>
       </Box>
 
       <Typography variant="body1" paragraph color="text.secondary">
         Manage learning lessons within domains. Lessons contain the actual
         learning content and activities.
       </Typography>
-
-      <Alert severity="info" sx={{ mb: 3 }}>
-        Lessons are loaded from the admin lessons endpoint. Create is enabled;
-        update and delete may require additional API endpoints.
-      </Alert>
 
       {error && (
         <Alert severity="warning" sx={{ mb: 3 }} onClose={() => setError(null)}>

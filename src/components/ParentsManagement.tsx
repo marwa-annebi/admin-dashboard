@@ -25,6 +25,7 @@ import {
   FormControlLabel,
   Tooltip,
   TablePagination,
+  InputAdornment,
 } from "@mui/material";
 import {
   Add,
@@ -33,6 +34,7 @@ import {
   Person,
   ToggleOn,
   ToggleOff,
+  Search,
 } from "@mui/icons-material";
 import type { User } from "../Api/models/User";
 import { AdminParentManagementService } from "../Api";
@@ -48,6 +50,7 @@ const ParentsManagement: React.FC = () => {
   // Pagination states
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [formData, setFormData] = useState({
     username: "",
@@ -66,9 +69,23 @@ const ParentsManagement: React.FC = () => {
   }, [page, pageSize, allParents]);
 
   const updatePaginatedParents = () => {
+    const normalized = searchTerm.trim().toLowerCase();
+    const filtered = normalized
+      ? allParents.filter((p) => {
+          const name = (p.name || "").toLowerCase();
+          const email = (p.email || "").toLowerCase();
+          const phone = (p.phone || "").toLowerCase();
+          return (
+            name.includes(normalized) ||
+            email.includes(normalized) ||
+            phone.includes(normalized)
+          );
+        })
+      : allParents;
+
     const startIndex = page * pageSize;
     const endIndex = startIndex + pageSize;
-    const paginatedParents = allParents.slice(startIndex, endIndex);
+    const paginatedParents = filtered.slice(startIndex, endIndex);
     setParents(paginatedParents);
   };
 
@@ -184,6 +201,12 @@ const ParentsManagement: React.FC = () => {
     setPage(0); // Reset to first page when changing page size
   };
 
+  // Reset to first page when the search term changes
+  useEffect(() => {
+    setPage(0);
+    updatePaginatedParents();
+  }, [searchTerm]);
+
   const handleOpenDialog = (parent?: User) => {
     if (parent) {
       setEditingParent(parent);
@@ -233,17 +256,15 @@ const ParentsManagement: React.FC = () => {
         setAllParents(updatedParents);
       } else {
         // Create new parent
-        await AdminParentManagementService.postApiUserParents(
-          {
-            requestBody: {
-              name: formData.username,
-              email: formData.email,
-              phone: formData.phone,
-              password: "temp123", // Temporary password - should be handled properly
-              parentPin: "1234", // Temporary PIN - should be handled properly
-            },
-          }
-        );
+        await AdminParentManagementService.postApiUserParents({
+          requestBody: {
+            name: formData.username,
+            email: formData.email,
+            phone: formData.phone,
+            password: "temp123", // Temporary password - should be handled properly
+            parentPin: "1234", // Temporary PIN - should be handled properly
+          },
+        });
         loadParents(); // Reload to get the new parent with proper ID
       }
       handleCloseDialog();
@@ -280,27 +301,25 @@ const ParentsManagement: React.FC = () => {
   };
 
   const handleToggleStatus = async (parent: User) => {
+    if (!parent._id) return;
     try {
-      const newStatus = !parent.isActive;
+      const shouldActivate = !parent.isActive;
 
-      // Note: The current API doesn't support isActive field in updates
-      // This is a client-side only toggle for demo purposes
-      // In a real implementation, you'd need a separate endpoint like:
-      // await AdminParentManagementService.activateParent(parent._id) or
-      // await AdminParentManagementService.deactivateParent(parent._id)
+      const response = shouldActivate
+        ? await AdminParentManagementService.patchApiUserParentsActivate({
+            id: parent._id,
+          })
+        : await AdminParentManagementService.patchApiUserParentsDeactivate({
+            id: parent._id,
+          });
 
-      // For now, we'll just update the local state
+      const confirmedStatus = response.data?.isActive ?? shouldActivate;
+
       const updatedParents = allParents.map((p) =>
-        p._id === parent._id ? { ...p, isActive: newStatus } : p
+        p._id === parent._id ? { ...p, isActive: confirmedStatus } : p
       );
       setAllParents(updatedParents);
-
-      // Show success message
-      const action = newStatus ? "activated" : "deactivated";
       setError(null);
-      console.log(
-        `Parent ${parent.name} has been ${action} (client-side only)`
-      );
     } catch (err) {
       console.error("Failed to toggle parent status:", err);
       setError(
@@ -324,13 +343,28 @@ const ParentsManagement: React.FC = () => {
         <Typography variant="h4" sx={{ fontWeight: 700 }}>
           Parents Management
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => handleOpenDialog()}
-        >
-          Add Parent
-        </Button>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <TextField
+            size="small"
+            placeholder="Search parents..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => handleOpenDialog()}
+          >
+            Add Parent
+          </Button>
+        </Box>
       </Box>
 
       <Typography variant="body1" paragraph color="text.secondary">
@@ -458,7 +492,17 @@ const ParentsManagement: React.FC = () => {
             </TableContainer>
             <TablePagination
               component="div"
-              count={allParents.length}
+              count={(searchTerm.trim()
+                ? allParents.filter((p) => {
+                    const q = searchTerm.trim().toLowerCase();
+                    return (
+                      (p.name || "").toLowerCase().includes(q) ||
+                      (p.email || "").toLowerCase().includes(q) ||
+                      (p.phone || "").toLowerCase().includes(q)
+                    );
+                  })
+                : allParents
+              ).length}
               page={page}
               onPageChange={handlePageChange}
               rowsPerPage={pageSize}

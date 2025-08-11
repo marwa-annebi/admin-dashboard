@@ -83,17 +83,6 @@ const SettingsSection: React.FC = () => {
         </Button>
       </Box>
 
-      <Alert severity="info" sx={{ mb: 4 }}>
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          Settings Management
-        </Typography>
-        <Typography variant="body2">
-          Connect to settings management endpoints to enable full configuration
-          capabilities. Current settings are stored locally and may require API
-          integration for persistence.
-        </Typography>
-      </Alert>
-
       <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
         Settings Categories
       </Typography>
@@ -145,60 +134,6 @@ const SettingsSection: React.FC = () => {
           </Card>
         ))}
       </Box>
-
-      <Box sx={{ mt: 4 }}>
-        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-          System Status
-        </Typography>
-        <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-          <Card sx={{ flex: "1 1 200px", minWidth: "180px" }}>
-            <CardContent sx={{ textAlign: "center" }}>
-              <AdminPanelSettings
-                sx={{ fontSize: 40, color: "success.main", mb: 1 }}
-              />
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                System Healthy
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                All services running
-              </Typography>
-            </CardContent>
-          </Card>
-          <Card sx={{ flex: "1 1 200px", minWidth: "180px" }}>
-            <CardContent sx={{ textAlign: "center" }}>
-              <Update sx={{ fontSize: 40, color: "info.main", mb: 1 }} />
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                v2.1.0
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Latest version
-              </Typography>
-            </CardContent>
-          </Card>
-          <Card sx={{ flex: "1 1 200px", minWidth: "180px" }}>
-            <CardContent sx={{ textAlign: "center" }}>
-              <Backup sx={{ fontSize: 40, color: "warning.main", mb: 1 }} />
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                Daily Backup
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Last: 2 hours ago
-              </Typography>
-            </CardContent>
-          </Card>
-        </Box>
-      </Box>
-
-      <Alert severity="warning" sx={{ mt: 4 }}>
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          Administrator Access Required
-        </Typography>
-        <Typography variant="body2">
-          Some settings require elevated administrator privileges. Contact your
-          system administrator if you need access to restricted configuration
-          options.
-        </Typography>
-      </Alert>
     </Box>
   );
 };

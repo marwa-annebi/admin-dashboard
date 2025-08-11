@@ -219,12 +219,6 @@ const LanguagesManagement: React.FC = () => {
         top level of the content hierarchy.
       </Typography>
 
-      <Alert severity="info" sx={{ mb: 3 }}>
-        Languages are loaded from GET /api/languages. Create is enabled; update
-        and delete operations require additional API endpoints to be
-        implemented.
-      </Alert>
-
       {error && (
         <Alert severity="warning" sx={{ mb: 3 }} onClose={() => setError(null)}>
           {error}
