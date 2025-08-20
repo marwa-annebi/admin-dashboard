@@ -40,6 +40,7 @@ interface Lesson {
   title: string;
   content: string;
   domainId: string;
+  type?: "word" | "paragraph" | "sentence";
 }
 
 const LessonsManagement: React.FC = () => {
@@ -60,9 +61,13 @@ const LessonsManagement: React.FC = () => {
 
   // Search state
   const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState<
+    "all" | "word" | "paragraph" | "sentence"
+  >("all");
 
   const [formData, setFormData] = useState({
     difficulty: "easy",
+    type: "word" as "word" | "paragraph" | "sentence",
     contents: [
       {
         languageId: "",
@@ -88,10 +93,13 @@ const LessonsManagement: React.FC = () => {
   useEffect(() => {
     const handle = setTimeout(() => {
       setPage(0);
-      loadLessons(searchTerm.trim() || undefined);
+      loadLessons(
+        searchTerm.trim() || undefined,
+        typeFilter === "all" ? undefined : typeFilter
+      );
     }, 300);
     return () => clearTimeout(handle);
-  }, [searchTerm]);
+  }, [searchTerm, typeFilter]);
 
   // Effect for pagination changes
   useEffect(() => {
@@ -105,7 +113,10 @@ const LessonsManagement: React.FC = () => {
     setLessons(paginatedLessons);
   };
 
-  const loadLessons = async (search?: string) => {
+  const loadLessons = async (
+    search?: string,
+    lessonType?: "word" | "paragraph" | "sentence"
+  ) => {
     setLoading(true);
     setError(null);
     try {
@@ -113,6 +124,7 @@ const LessonsManagement: React.FC = () => {
         page: 1,
         limit: 1000,
         search,
+        type: lessonType,
       });
       const apiLessons = response.data || [];
       const mapped = apiLessons.map((l: any) => ({
@@ -120,6 +132,7 @@ const LessonsManagement: React.FC = () => {
         title: l.title || "",
         content: l.description || "",
         domainId: (l.domain && (l.domain._id || l.domain.id)) || "",
+        type: l.type || undefined,
       }));
       setAllLessons(mapped);
     } catch (err) {
@@ -169,6 +182,7 @@ const LessonsManagement: React.FC = () => {
       setEditingLesson(lesson);
       setFormData({
         difficulty: "easy",
+        type: (lesson.type as any) || "word",
         contents: [
           {
             languageId:
@@ -184,6 +198,7 @@ const LessonsManagement: React.FC = () => {
       setEditingLesson(null);
       setFormData({
         difficulty: "easy",
+        type: "word",
         contents: [
           {
             languageId: "",
@@ -202,6 +217,7 @@ const LessonsManagement: React.FC = () => {
     setEditingLesson(null);
     setFormData({
       difficulty: "easy",
+      type: "word",
       contents: [
         {
           languageId: "",
@@ -239,6 +255,7 @@ const LessonsManagement: React.FC = () => {
             description: entry.content,
             domainId: entry.domainId,
             difficulty: formData.difficulty as "easy" | "medium" | "hard",
+            type: formData.type as "word" | "paragraph" | "sentence",
           });
           createdLessons.push({
             _id: created._id || "",
@@ -248,6 +265,7 @@ const LessonsManagement: React.FC = () => {
               (created.domain &&
                 (created.domain._id || (created as any).domainId)) ||
               "",
+            type: (created as any).type || undefined,
           });
         }
         setAllLessons([...allLessons, ...createdLessons]);
@@ -307,6 +325,19 @@ const LessonsManagement: React.FC = () => {
               ),
             }}
           />
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel>Type</InputLabel>
+            <Select
+              label="Type"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as any)}
+            >
+              <MenuItem value="all">All</MenuItem>
+              <MenuItem value="word">Word</MenuItem>
+              <MenuItem value="paragraph">Paragraph</MenuItem>
+              <MenuItem value="sentence">Sentence</MenuItem>
+            </Select>
+          </FormControl>
           <Button
             variant="contained"
             startIcon={<Add />}
@@ -341,6 +372,7 @@ const LessonsManagement: React.FC = () => {
                   <TableRow>
                     <TableCell>Title</TableCell>
                     <TableCell>Content</TableCell>
+                    <TableCell>Type</TableCell>
                     <TableCell>Domain Name</TableCell>
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
@@ -348,7 +380,7 @@ const LessonsManagement: React.FC = () => {
                 <TableBody>
                   {lessons.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} align="center">
+                      <TableCell colSpan={5} align="center">
                         <Box sx={{ py: 4 }}>
                           <Typography
                             variant="h6"
@@ -382,6 +414,9 @@ const LessonsManagement: React.FC = () => {
                           {lesson.content && lesson.content.length > 50
                             ? `${lesson.content.substring(0, 50)}...`
                             : lesson.content}
+                        </TableCell>
+                        <TableCell sx={{ textTransform: "capitalize" }}>
+                          {lesson.type || "-"}
                         </TableCell>
                         <TableCell>
                           {domains.find((d) => d._id === lesson.domainId)?.name}
@@ -432,6 +467,23 @@ const LessonsManagement: React.FC = () => {
         </DialogTitle>
         <DialogContent>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+            <FormControl fullWidth required>
+              <InputLabel>Lesson Type</InputLabel>
+              <Select
+                label="Lesson Type"
+                value={formData.type}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    type: e.target.value as any,
+                  }))
+                }
+              >
+                <MenuItem value="word">Word</MenuItem>
+                <MenuItem value="paragraph">Paragraph</MenuItem>
+                <MenuItem value="sentence">Sentence</MenuItem>
+              </Select>
+            </FormControl>
             {formData.contents.map((c, idx) => (
               <Box
                 key={`content-${idx}`}

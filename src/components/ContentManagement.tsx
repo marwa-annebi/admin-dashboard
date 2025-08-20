@@ -1,10 +1,19 @@
 import React from "react";
 import { Box, Typography, Tabs, Tab } from "@mui/material";
-import { Public, Category, School, Spellcheck } from "@mui/icons-material";
+import {
+  Public,
+  Category,
+  School,
+  Spellcheck,
+  Textsms,
+  Notes,
+} from "@mui/icons-material";
 import LanguagesManagement from "./LanguagesManagement";
 import DomainsManagement from "./DomainsManagement";
 import LessonsManagement from "./LessonsManagement";
 import WordsManagement from "./WordsManagement";
+import SentencesManagement from "./SentencesManagement";
+import ParagraphsManagement from "./ParagraphsManagement";
 
 interface ContentManagementProps {
   contentTab: string;
@@ -20,6 +29,8 @@ const ContentManagement: React.FC<ContentManagementProps> = ({
     { id: "domains", label: "Domains", icon: <Category /> },
     { id: "lessons", label: "Lessons", icon: <School /> },
     { id: "words", label: "Words", icon: <Spellcheck /> },
+    { id: "sentences", label: "Sentences", icon: <Textsms /> },
+    { id: "paragraphs", label: "Paragraphs", icon: <Notes /> },
   ];
 
   return (
@@ -27,10 +38,10 @@ const ContentManagement: React.FC<ContentManagementProps> = ({
       <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
         Content Management
       </Typography>
-      <Typography variant="body1" paragraph color="text.secondary">
+      {/* <Typography variant="body1" paragraph color="text.secondary">
         Manage the hierarchical content structure: Languages → Domains → Lessons
         → Words
-      </Typography>
+      </Typography> */}
 
       <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
         <Tabs
@@ -55,6 +66,8 @@ const ContentManagement: React.FC<ContentManagementProps> = ({
       {contentTab === "domains" && <DomainsManagement />}
       {contentTab === "lessons" && <LessonsManagement />}
       {contentTab === "words" && <WordsManagement />}
+      {contentTab === "sentences" && <SentencesManagement />}
+      {contentTab === "paragraphs" && <ParagraphsManagement />}
     </Box>
   );
 };

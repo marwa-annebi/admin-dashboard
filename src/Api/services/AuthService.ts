@@ -105,7 +105,6 @@ export class AuthService {
             url: '/api/auth/admin-profile',
             errors: {
                 403: `Access denied - admin privileges required`,
-                404: `Admin not found`,
             },
         });
     }

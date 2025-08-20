@@ -6,6 +6,7 @@ export type CreateLessonPayload = {
   description?: string;
   domainId: string;
   difficulty: "easy" | "medium" | "hard";
+  type?: "word" | "paragraph" | "sentence";
   order?: number;
   isActive?: boolean;
 };

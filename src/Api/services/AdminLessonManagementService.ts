@@ -22,6 +22,7 @@ export class AdminLessonManagementService {
         limit = 20,
         sortBy = 'createdAt',
         sortOrder = 'desc',
+        type = 'all',
     }: {
         domainId?: string,
         difficulty?: 'easy' | 'medium' | 'hard',
@@ -34,6 +35,7 @@ export class AdminLessonManagementService {
         limit?: number,
         sortBy?: string,
         sortOrder?: 'asc' | 'desc',
+        type?: 'word' | 'sentence' | 'paragraph' | 'all',
     }): CancelablePromise<{
         successmessage?: string;
         data?: Array<Lesson>;
@@ -53,6 +55,7 @@ export class AdminLessonManagementService {
                 'limit': limit,
                 'sortBy': sortBy,
                 'sortOrder': sortOrder,
+                'type': type,
             },
             errors: {
                 403: `Access denied - admin privileges required`,

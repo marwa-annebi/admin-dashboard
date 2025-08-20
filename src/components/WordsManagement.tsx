@@ -12,6 +12,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
   Paper,
   IconButton,
   Dialog,
@@ -24,7 +25,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Chip,
 } from "@mui/material";
 import {
   Add,
@@ -35,6 +35,9 @@ import {
 } from "@mui/icons-material";
 import { AdminWordManagementService } from "../Api/services/AdminWordManagementService";
 import { OpenAPI } from "../Api/core/OpenAPI";
+import { AdminDomainManagementService } from "../Api/services/AdminDomainManagementService";
+import type { Domain } from "../Api/models/Domain";
+import type { Language } from "../Api/models/Language";
 import { AdminLessonManagementService } from "../Api/services/AdminLessonManagementService";
 import type { Word } from "../Api/models/Word";
 import type { Lesson } from "../Api/models/Lesson";
@@ -46,11 +49,23 @@ const WordsManagement: React.FC = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingWord, setEditingWord] = useState<Word | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [lessonsLoading, setLessonsLoading] = useState(false);
+  const [domains, setDomains] = useState<
+    Array<Domain & { language?: Language }>
+  >([]);
   const [submitting, setSubmitting] = useState(false);
+  const [filters, setFilters] = useState<{
+    domainId: string;
+    lessonId: string;
+  }>({ domainId: "", lessonId: "" });
+  const [page, setPage] = useState(0); // zero-based for UI
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
   const [formData, setFormData] = useState({
     lessonId: "",
     word: "",
     sentence: "",
+    phonetic: "",
     images: [] as File[],
   });
 
@@ -70,19 +85,29 @@ const WordsManagement: React.FC = () => {
   };
 
   useEffect(() => {
+    loadDomains();
     loadLessons();
-    loadWords();
   }, []);
 
-  const loadWords = async () => {
+  useEffect(() => {
+    loadWords(page + 1, rowsPerPage);
+  }, [page, rowsPerPage, filters.domainId, filters.lessonId]);
+
+  const loadWords = async (
+    requestedPage: number = page + 1,
+    requestedLimit: number = rowsPerPage
+  ) => {
     setLoading(true);
     setError(null);
     try {
       const response = await AdminWordManagementService.getApiWordsAdmin({
-        page: 1,
-        limit: 1000,
+        page: requestedPage,
+        limit: requestedLimit,
+        domainId: filters.domainId || undefined,
+        lessonId: filters.lessonId || undefined,
       });
       setWords(response.data || []);
+      setTotalCount(response.totalCount || 0);
     } catch (err) {
       console.error("Failed to load words:", err);
       setError("Failed to load words. Please check API connection.");
@@ -91,17 +116,41 @@ const WordsManagement: React.FC = () => {
     }
   };
 
-  const loadLessons = async () => {
+  const loadLessons = async (domainId?: string) => {
+    setLessonsLoading(true);
     try {
       const response = await AdminLessonManagementService.getApiLessonAdmin({
         page: 1,
         limit: 1000,
+        domainId: domainId ?? (filters.domainId || undefined),
+        type: "word",
       });
       setLessons(response.data || []);
     } catch (err) {
       console.error("Failed to load lessons for selection:", err);
       // Don't block word list on lessons failure
+    } finally {
+      setLessonsLoading(false);
     }
+  };
+
+  const loadDomains = async () => {
+    try {
+      const res = await AdminDomainManagementService.getApiDomainesAll({});
+      setDomains(res.data || []);
+    } catch (err) {
+      console.error("Failed to load domains:", err);
+    }
+  };
+
+  const renderDomainLabel = (domainId?: string) => {
+    if (!domainId) return "—";
+    const dom = domains.find((d) => d._id === domainId);
+    if (!dom) return "—";
+    const code = (dom as any).language?.code || (dom as any).language?.name;
+    return code
+      ? `${dom.name} (${String(code).toUpperCase()})`
+      : dom.name || "—";
   };
 
   const handleOpenDialog = (wordItem?: Word) => {
@@ -111,11 +160,18 @@ const WordsManagement: React.FC = () => {
         lessonId: wordItem.lesson?._id || "",
         word: wordItem.word || "",
         sentence: wordItem.sentence || "",
+        phonetic: wordItem.phonetic || "",
         images: [],
       });
     } else {
       setEditingWord(null);
-      setFormData({ lessonId: "", word: "", sentence: "", images: [] });
+      setFormData({
+        lessonId: "",
+        word: "",
+        sentence: "",
+        phonetic: "",
+        images: [],
+      });
     }
     setOpenDialog(true);
   };
@@ -123,7 +179,13 @@ const WordsManagement: React.FC = () => {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setEditingWord(null);
-    setFormData({ lessonId: "", word: "", sentence: "", images: [] });
+    setFormData({
+      lessonId: "",
+      word: "",
+      sentence: "",
+      phonetic: "",
+      images: [],
+    });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -139,7 +201,7 @@ const WordsManagement: React.FC = () => {
         // Update not implemented yet
         setError("Word update not yet implemented in the API.");
       } else {
-        await AdminWordManagementService.postApiWordsAdmin({
+        await AdminWordManagementService.postApiWordsAdminBulk({
           formData: {
             lessonId: formData.lessonId,
             word: formData.word,
@@ -149,7 +211,7 @@ const WordsManagement: React.FC = () => {
               : undefined,
           },
         });
-        await loadWords();
+        await loadWords(page + 1, rowsPerPage);
       }
       handleCloseDialog();
     } catch (err) {
@@ -158,6 +220,18 @@ const WordsManagement: React.FC = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleChangePage = (_: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const newSize = parseInt(event.target.value, 10);
+    setRowsPerPage(newSize);
+    setPage(0);
   };
 
   const handleDelete = async (_wordId: string) => {
@@ -193,6 +267,63 @@ const WordsManagement: React.FC = () => {
         and a sentence.
       </Typography>
 
+      <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+        <FormControl sx={{ minWidth: 220 }}>
+          <InputLabel>Domain</InputLabel>
+          <Select
+            label="Domain"
+            value={filters.domainId}
+            onChange={async (e) => {
+              const newDomainId = e.target.value as string;
+              setFilters((prev) => ({
+                ...prev,
+                domainId: newDomainId,
+                lessonId: "",
+              }));
+              // refresh lessons based on domain
+              await loadLessons(newDomainId);
+              setPage(0);
+            }}
+            MenuProps={{ PaperProps: { style: { maxHeight: 300 } } }}
+          >
+            <MenuItem value="">
+              <em>All domains</em>
+            </MenuItem>
+            {domains.map((d) => (
+              <MenuItem key={d._id} value={d._id || ""}>
+                {renderDomainLabel(d._id || "")}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl sx={{ minWidth: 240 }} disabled={lessonsLoading}>
+          <InputLabel>Lesson</InputLabel>
+          <Select
+            label="Lesson"
+            value={filters.lessonId}
+            onChange={(e) => {
+              setFilters((prev) => ({
+                ...prev,
+                lessonId: e.target.value as string,
+              }));
+              setPage(0);
+            }}
+            MenuProps={{ PaperProps: { style: { maxHeight: 300 } } }}
+          >
+            <MenuItem value="">
+              <em>All lessons</em>
+            </MenuItem>
+            {lessons.map((lesson) => (
+              <MenuItem key={lesson._id} value={lesson._id || ""}>
+                {lesson.title}{" "}
+                {lesson.difficulty ? `(${lesson.difficulty})` : ""}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+
       {error && (
         <Alert severity="warning" sx={{ mb: 3 }}>
           {error}
@@ -211,7 +342,6 @@ const WordsManagement: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>Word</TableCell>
-                    <TableCell>Sentence</TableCell>
                     <TableCell>Images</TableCell>
                     <TableCell>Lesson</TableCell>
                     <TableCell align="right">Actions</TableCell>
@@ -228,40 +358,28 @@ const WordsManagement: React.FC = () => {
                           <strong>{wordItem.word}</strong>
                         </Box>
                       </TableCell>
-                      <TableCell>{wordItem.sentence || "—"}</TableCell>
                       <TableCell>
-                        {wordItem.images && wordItem.images.length > 0 ? (
-                          <Box
-                            sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}
-                          >
-                            {wordItem.images.slice(0, 3).map((img, idx) => (
-                              <img
-                                key={`${wordItem._id}-img-${idx}`}
-                                src={buildImageUrl(img)}
-                                alt={`word-img-${idx}`}
-                                style={{
-                                  width: 36,
-                                  height: 36,
-                                  objectFit: "cover",
-                                  borderRadius: 4,
-                                  border: "1px solid #eee",
-                                }}
-                                crossOrigin="anonymous"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = "none";
-                                  // Optionally keep a minimal placeholder box next to others
-                                }}
-                              />
-                            ))}
-                            {wordItem.images.length > 3 && (
-                              <Chip
-                                label={`+${wordItem.images.length - 3}`}
-                                size="small"
-                              />
-                            )}
-                          </Box>
+                        {wordItem.images ? (
+                          <img
+                            src={buildImageUrl(wordItem.images[0])}
+                            alt={wordItem.word}
+                            crossOrigin="anonymous"
+                            style={{
+                              width: 40,
+                              height: 40,
+                              objectFit: "cover",
+                              borderRadius: 4,
+                            }}
+                            onError={(e) => {
+                              console.error(
+                                "Image failed to load:",
+                                wordItem?.images?.[0]
+                              );
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
                         ) : (
-                          "No images"
+                          "No image"
                         )}
                       </TableCell>
                       <TableCell>
@@ -288,6 +406,15 @@ const WordsManagement: React.FC = () => {
                 </TableBody>
               </Table>
             </TableContainer>
+            <TablePagination
+              component="div"
+              count={totalCount}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[10, 20, 50, 100]}
+            />
           </CardContent>
         </Card>
       )}
@@ -301,6 +428,10 @@ const WordsManagement: React.FC = () => {
         <DialogTitle>{editingWord ? "Edit Word" : "Add New Word"}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+            <Alert severity="info">
+              Creating a word via bulk will add it to all equivalent lessons
+              across languages for the selected lesson's domain and difficulty.
+            </Alert>
             <FormControl fullWidth required>
               <InputLabel>Lesson</InputLabel>
               <Select
@@ -332,15 +463,13 @@ const WordsManagement: React.FC = () => {
             />
 
             <TextField
-              label="Sentence"
-              value={formData.sentence}
+              label="Phonetic"
+              value={formData.phonetic}
               onChange={(e) =>
-                setFormData({ ...formData, sentence: e.target.value })
+                setFormData({ ...formData, phonetic: e.target.value })
               }
               fullWidth
-              placeholder="Enter a sentence using the word (optional)"
-              multiline
-              rows={3}
+              placeholder="Enter the phonetic of the word"
             />
 
             <Box>
